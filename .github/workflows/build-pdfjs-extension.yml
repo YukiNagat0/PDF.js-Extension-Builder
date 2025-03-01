@@ -1,0 +1,40 @@
+name: Build PDF.js Chrome Extension
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Get latest PDF.js release
+      id: get-release
+      run: |
+        LATEST_RELEASE=$(curl -s https://api.github.com/repos/mozilla/pdf.js/releases/latest | jq -r '.tag_name')
+        echo "latest_release=$LATEST_RELEASE" >> $GITHUB_OUTPUT
+
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        repository: mozilla/pdf.js
+        ref: ${{ steps.get-release.outputs.latest_release }}
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 22.x
+
+    - name: Install dependencies
+      run: npm install
+
+    - name: Build Chrome extension
+      run: npx gulp chromium
+
+    - name: Upload extension artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: pdfjs-chromium-extension-${{ steps.get-release.outputs.latest_release }}
+        path: build/chromium/
